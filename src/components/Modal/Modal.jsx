@@ -1,36 +1,33 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import styles from './Modal.module.css';
 
-class Modal extends React.Component {
-  componentDidMount() {
-    window.addEventListener('keydown', this.handleKeyDown);
-  }
-  componentWillUnmount() {
-    window.removeEventListener('keydown', this.handleKeyDown);
-  }
-  handleKeyDown = event => {
-    if (event.code === 'Escape') {
-      this.props.onClose();
+export function Modal({ onClose, children }) {
+  useEffect(() => {
+    const handleKeydown = e => {
+      if (e.code === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeydown);
+    return () => {
+      window.removeEventListener('keydown', handleKeydown);
+    };
+  }, [onClose]);
+
+  const handleBackdrop = e => {
+    if (e.target === e.currentTarget) {
+      onClose();
     }
   };
 
-  handleBackdrop = event => {
-    if (event.target === event.currentTarget) {
-      this.props.onClose();
-    }
-  };
-  render() {
-    const { children } = this.props;
-
-    return (
-      <div className={styles.overlay} onClick={this.handleBackdrop}>
-        <div className={styles.modal}>
-          <img src={children} alt={children} />
-        </div>
+  return (
+    <div className={styles.overlay} onClick={handleBackdrop}>
+      <div className={styles.modal}>
+        <img src={children} alt={children} />
       </div>
-    );
-  }
+    </div>
+  );
 }
 
 Modal.propTypes = {

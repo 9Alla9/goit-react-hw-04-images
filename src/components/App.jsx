@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Searchbar from './Searchbar/Searchbar';
@@ -9,88 +9,79 @@ import Modal from './Modal/Modal';
 import getPicturesData from 'Api/getData';
 import styles from './App.module.css';
 
-export class App extends React.Component {
-  state = {
-    inputValue: '',
-    picturesData: [],
-    page: 1,
-    totalPages: 1,
-    loading: false,
-    isModal: false,
-    clickedImg: '',
+export const App = () => {
+  const [inputValue, setInputValue] = useState('');
+  const [picturesData, setPicturesData] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [isModal, setIsModal] = useState(false);
+  const [clickedImg, setClickedImg] = useState('');
+
+  const handleSubmit = inputQuery => {
+    setInputValue(inputQuery);
+    setPage(1);
+    setPicturesData([]);
   };
 
-  handleSubmit = inputQuery => {
-    this.setState({ inputValue: inputQuery, page: 1, picturesData: [] });
+  const loaderClick = () => {
+    setPage(prevState => prevState + 1);
   };
 
-  loaderClick = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const handleImageClick = url => {
+    setIsModal(true);
+    setClickedImg(url);
   };
 
-  handleImageClick = url => {
-    this.setState({ clickedImg: url, isModal: true });
+  const handleModalClose = () => {
+    setIsModal(false);
   };
 
-  handleModalClose = () => {
-    this.setState({ clickedImg: null, isModal: false });
-  };
-  componentDidUpdate(prevProps, prevState) {
-    if (
-      this.state.inputValue !== prevState.inputValue ||
-      this.state.page !== prevState.page
-    ) {
-      this.setState({ loading: true });
-      getPicturesData(this.state.inputValue, this.state.page)
-        .then(response => {
-          if (response.data.hits.length === 0) {
-            toast.error(
-              'Sorry, there are no images matching your search query. Please try again.',
-              { theme: 'colored' }
-            );
-          } else {
-            this.setState(prevState => ({
-              picturesData: [...prevState.picturesData, ...response.data.hits],
-              totalPages: Math.ceil(
-                response.data.totalHits / response.data.hits.length
-              ),
-            }));
-
-            if (this.state.page === 1) {
-              toast.info(
-                `Hooray! We found ${response.data.totalHits} images.`,
-                { theme: 'colored' }
-              );
-            }
-          }
-        })
-        .catch(error => {
-          toast.error(error.message, { theme: 'colored' });
-        })
-        .finally(() => {
-          this.setState({ loading: false });
-        });
+  useEffect(() => {
+    if (inputValue.trim() === '') {
+      return;
     }
-  }
 
-  render() {
-    const { loading, picturesData, page, totalPages } = this.state;
+    setLoading(true);
 
-    return (
-      <div className={styles.container}>
-        <Searchbar onSubmit={this.handleSubmit} />
-        {loading && <Loader />}
-        <ImageGallery data={picturesData} onClickImg={this.handleImageClick} />
-        {picturesData.length !== 0 && page !== totalPages && (
-          <Button onClick={this.loaderClick} />
-        )}
-        <ToastContainer autoClose={3000} />
-        {this.state.isModal && (
-          <Modal onClose={this.handleModalClose}>{this.state.clickedImg}</Modal>
-        )}
-      </div>
-    );
-  }
-}
+    getPicturesData(inputValue, page)
+      .then(response => {
+        if (response.data.hits.length === 0) {
+          toast.error(
+            'Sorry, there are no images matching your search query. Please try again.',
+            { theme: 'colored' }
+          );
+        } else {
+          setPicturesData(prevState => [...prevState, ...response.data.hits]);
+          setTotalPages(
+            Math.ceil(response.data.totalHits / response.data.hits.length)
+          );
+
+          if (page === 1) {
+            toast.info(`Hooray! We found ${response.data.totalHits} images.`, {
+              theme: 'colored',
+            });
+          }
+        }
+      })
+      .catch(error => {
+        toast.error(error.message, { theme: 'colored' });
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [inputValue, page]);
+
+  return (
+    <div className={styles.container}>
+      <Searchbar onSubmit={handleSubmit} />
+      {loading && <Loader />}
+      <ImageGallery data={picturesData} onClickImg={handleImageClick} />
+      {picturesData.length !== 0 && page !== totalPages && (
+        <Button onClick={loaderClick} />
+      )}
+      <ToastContainer autoClose={3000} />
+      {isModal && <Modal onClose={handleModalClose}>{clickedImg}</Modal>}
+    </div>
+  );
+};
